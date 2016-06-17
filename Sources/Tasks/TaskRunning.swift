@@ -1,7 +1,7 @@
 import Foundation
 import When
 
-protocol TaskRunning: class {
+public protocol TaskRunning: class {
   var URLRequest: NSURLRequest { get }
   var ride: Ride { get }
 
