@@ -1,7 +1,7 @@
 Pod::Spec.new do |s|
   s.name             = "Malibu"
-  s.summary          = "A short description of Malibu."
-  s.version          = "0.1.0"
+  s.summary          = "A networking library built on promises."
+  s.version          = "1.0.0"
   s.homepage         = "https://github.com/hyperoslo/Malibu"
   s.license          = 'MIT'
   s.author           = { "Hyper Interaktiv AS" => "ios@hyper.no" }
@@ -12,7 +12,7 @@ Pod::Spec.new do |s|
   s.social_media_url = 'https://twitter.com/hyperoslo'
 
   s.ios.deployment_target = '8.0'
-  s.osx.deployment_target = '10.9'
+  s.osx.deployment_target = '10.10'
   s.tvos.deployment_target = '9.2'
 
   s.requires_arc = true
