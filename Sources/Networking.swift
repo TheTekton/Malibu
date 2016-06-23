@@ -19,7 +19,7 @@ public class Networking: NSObject {
     
     weak var sessionDelegate: NSURLSessionDelegate?
     
-    lazy var session: NSURLSession = {
+    public lazy var session: NSURLSession = {
         return NSURLSession(
             configuration: self.sessionConfiguration.value,
             delegate: self.sessionDelegate ?? self,
