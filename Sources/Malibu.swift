@@ -40,8 +40,16 @@ public func register(mock mock: Mock) {
 
 // MARK: - Requests
 
+public func GET(request: GETRequestable) -> Ride {
+    return backfootSurfer.GET(request)
+}
+
 public func GET(request: GETRequestable, backgroundTask: (session: NSURLSession, URLRequest: NSURLRequest, taskRide: Ride) -> TaskRunning) -> Ride {
     return backfootSurfer.GET(request, backgroundTask: backgroundTask)
+}
+
+public func POST(request: POSTRequestable) -> Ride {
+    return backfootSurfer.POST(request)
 }
 
 public func POST(request: POSTRequestable, backgroundTask: (session: NSURLSession, URLRequest: NSURLRequest, taskRide: Ride) -> TaskRunning) -> Ride {

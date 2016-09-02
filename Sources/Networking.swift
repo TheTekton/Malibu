@@ -178,8 +178,16 @@ public class Networking: NSObject {
 
 public extension Networking {
     
+    public func GET(request: GETRequestable) -> Ride {
+        return execute(request, backgroundTask: nil)
+    }
+    
     public func GET(request: GETRequestable, backgroundTask: ((session: NSURLSession, URLRequest: NSURLRequest, taskRide: Ride) -> TaskRunning)?) -> Ride {
         return execute(request, backgroundTask: backgroundTask)
+    }
+    
+    public func POST(request: POSTRequestable) -> Ride {
+        return execute(request, backgroundTask: nil)
     }
     
     public func POST(request: POSTRequestable, backgroundTask: ((session: NSURLSession, URLRequest: NSURLRequest, taskRide: Ride) -> TaskRunning)?) -> Ride {
