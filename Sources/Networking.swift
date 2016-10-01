@@ -9,18 +9,18 @@ public class Networking: NSObject {
     }
     
     public var additionalHeaders: (() -> [String: String])?
-    public var beforeEach: (Requestable -> Requestable)?
-    public var preProcessRequest: (NSMutableURLRequest -> Void)?
+    public var beforeEach: ((Requestable) -> Requestable)?
+    public var preProcessRequest: ((NSMutableURLRequest) -> Void)?
     
     var baseURLString: URLStringConvertible?
     var sessionConfiguration: SessionConfiguration
     var customHeaders = [String: String]()
     var mocks = [String: Mock]()
     
-    weak var sessionDelegate: NSURLSessionDelegate?
+    weak var sessionDelegate: URLSessionDelegate?
     
-    public lazy var session: NSURLSession = {
-        return NSURLSession(
+    public lazy var session: URLSession = {
+        return Foundation.URLSession(
             configuration: self.sessionConfiguration.value,
             delegate: self.sessionDelegate ?? self,
             delegateQueue: nil)
@@ -43,8 +43,8 @@ public class Networking: NSObject {
     // MARK: - Initialization
     
     public init(baseURLString: URLStringConvertible? = nil,
-                sessionConfiguration: SessionConfiguration = .Default,
-                sessionDelegate: NSURLSessionDelegate? = nil) {
+                sessionConfiguration: SessionConfiguration = .default,
+                sessionDelegate: URLSessionDelegate? = nil) {
         self.baseURLString = baseURLString
         self.sessionConfiguration = sessionConfiguration
         self.sessionDelegate = sessionDelegate
@@ -55,17 +55,84 @@ public class Networking: NSObject {
         self.baseURLString = url
     }
     
-    public func setInitSessionConfiguration(sessionConfiguration: NSURLSessionConfiguration) {
+    public func setInitSessionConfiguration(sessionConfiguration: URLSessionConfiguration) {
         self.sessionConfiguration = SessionConfigurationBridge.Custom(sessionConfiguration)
     }
     
-    public func setInitSessionDelegate(sessionDelegate: NSURLSessionDelegate) {
+    public func setInitSessionDelegate(sessionDelegate: URLSessionDelegate) {
         self.sessionDelegate = sessionDelegate
     }
     
     // MARK: - Networking
     
-    func execute(request: Requestable, backgroundTask: ((session: NSURLSession, URLRequest: NSURLRequest, taskRide: Ride) -> TaskRunning)?) -> Ride {
+    func execute(request: Requestable) -> Ride {
+        let ride = Ride()
+        let URLRequest: NSMutableURLRequest
+        
+        do {
+            let request = beforeEach?(request) ?? request
+            URLRequest = try request.toURLRequest(baseURLString, additionalHeaders: requestHeaders)
+        } catch {
+            ride.reject(error)
+            return ride
+        }
+        
+        preProcessRequest?(URLRequest)
+        
+        var task: TaskRunning? = nil
+        
+        switch Malibu.mode {
+        case .regular:
+            task = SessionDataTask(session: session, URLRequest: URLRequest as URLRequest, ride: ride)
+        case .background:
+            ride.reject(MalibuError.invalidParameter)
+        case .partial:
+            if let mock = prepareMock(request: request) {
+                task = MockDataTask(mock: mock, URLRequest: URLRequest as URLRequest, ride: ride)
+            } else {
+                task = SessionDataTask(session: session, URLRequest: URLRequest as URLRequest, ride: ride)
+            }
+        case .fake:
+            guard let mock = prepareMock(request: request) else {
+                ride.reject(MalibuError.noMockProvided)
+                return ride
+            }
+            
+            task = MockDataTask(mock: mock, URLRequest: URLRequest as URLRequest, ride: ride)
+        default:
+            task = SessionDataTask(session: session, URLRequest: URLRequest as URLRequest, ride: ride)
+        }
+        
+        
+        let etagPromise = ride.then { result -> Wave in
+            self.saveEtag(request: request, response: result.response)
+            return result
+        }
+        
+        let nextRide = Ride()
+        
+        etagPromise
+            .done({ value in
+                if logger.enabled {
+                    logger.requestLogger.init(level: logger.level).logRequest(request, URLRequest: value.request)
+                    logger.responseLogger.init(level: logger.level).logResponse(value.response)
+                }
+                nextRide.resolve(value)
+            })
+            .fail({ error in
+                if logger.enabled {
+                    logger.errorLogger.init(level: logger.level).logError(error)
+                }
+                
+                nextRide.reject(error)
+            })
+        
+        task?.run()
+        
+        return nextRide
+    }
+    
+    func execute(request: Requestable, backgroundTask: @escaping (_ session: URLSession, _ URLRequest: URLRequest, _ taskRide: Ride) -> TaskRunning) -> Ride {
         let ride = Ride()
         let URLRequest: NSMutableURLRequest
         
@@ -82,27 +149,27 @@ public class Networking: NSObject {
         let task: TaskRunning
         
         switch Malibu.mode {
-        case .Regular:
-            task = SessionDataTask(session: session, URLRequest: URLRequest, ride: ride)
-        case .Background:
-            task = backgroundTask!(session: session, URLRequest: URLRequest, taskRide: ride)
-        case .Partial:
-            if let mock = prepareMock(request) {
-                task = MockDataTask(mock: mock, URLRequest: URLRequest, ride: ride)
+        case .regular:
+            task = SessionDataTask(session: session, URLRequest: URLRequest as URLRequest, ride: ride)
+        case .background:
+            task = backgroundTask(session, URLRequest as URLRequest, ride)
+        case .partial:
+            if let mock = prepareMock(request: request) {
+                task = MockDataTask(mock: mock, URLRequest: URLRequest as URLRequest, ride: ride)
             } else {
-                task = SessionDataTask(session: session, URLRequest: URLRequest, ride: ride)
+                task = SessionDataTask(session: session, URLRequest: URLRequest as URLRequest, ride: ride)
             }
-        case .Fake:
-            guard let mock = prepareMock(request) else {
-                ride.reject(Error.NoMockProvided)
+        case .fake:
+            guard let mock = prepareMock(request: request) else {
+                ride.reject(MalibuError.noMockProvided)
                 return ride
             }
             
-            task = MockDataTask(mock: mock, URLRequest: URLRequest, ride: ride)
+            task = MockDataTask(mock: mock, URLRequest: URLRequest as URLRequest, ride: ride)
         }
         
         let etagPromise = ride.then { result -> Wave in
-            self.saveEtag(request, response: result.response)
+            self.saveEtag(request: request, response: result.response)
             return result
         }
         
@@ -131,7 +198,7 @@ public class Networking: NSObject {
     
     // MARK: - Authentication
     
-    public func authenticate(username username: String, password: String) {
+    public func authenticate(username: String, password: String) {
         guard let header = Header.authentication(username: username, password: password) else {
             return
         }
@@ -139,17 +206,17 @@ public class Networking: NSObject {
         customHeaders["Authorization"] = header
     }
     
-    public func authenticate(authorizationHeader authorizationHeader: String) {
+    public func authenticate(authorizationHeader: String) {
         customHeaders["Authorization"] = authorizationHeader
     }
     
-    public func authenticate(bearerToken bearerToken: String) {
+    public func authenticate(bearerToken: String) {
         customHeaders["Authorization"] = "Bearer \(bearerToken)"
     }
     
     // MARK: - Mocks
     
-    public func register(mock mock: Mock) {
+    public func register(mock: Mock) {
         mocks[mock.request.key] = mock
     }
     
@@ -163,7 +230,7 @@ public class Networking: NSObject {
     
     // MARK: - Helpers
     
-    func saveEtag(request: Requestable, response: NSHTTPURLResponse) {
+    func saveEtag(request: Requestable, response: HTTPURLResponse) {
         guard let etag = response.allHeaderFields["ETag"] as? String else {
             return
         }
@@ -179,52 +246,52 @@ public class Networking: NSObject {
 public extension Networking {
     
     public func GET(request: GETRequestable) -> Ride {
-        return execute(request, backgroundTask: nil)
+        return execute(request: request)
     }
     
-    public func GET(request: GETRequestable, backgroundTask: ((session: NSURLSession, URLRequest: NSURLRequest, taskRide: Ride) -> TaskRunning)?) -> Ride {
-        return execute(request, backgroundTask: backgroundTask)
+    public func GET(request: GETRequestable, backgroundTask: @escaping (_ session: URLSession, _ URLRequest: URLRequest, _ taskRide: Ride) -> TaskRunning) -> Ride {
+        return execute(request: request, backgroundTask: backgroundTask)
     }
     
     public func POST(request: POSTRequestable) -> Ride {
-        return execute(request, backgroundTask: nil)
+        return execute(request: request)
     }
     
-    public func POST(request: POSTRequestable, backgroundTask: ((session: NSURLSession, URLRequest: NSURLRequest, taskRide: Ride) -> TaskRunning)?) -> Ride {
-        return execute(request, backgroundTask: backgroundTask)
+    public func POST(request: POSTRequestable, backgroundTask: @escaping (_ session: URLSession, _ URLRequest: URLRequest, _ taskRide: Ride) -> TaskRunning) -> Ride {
+        return execute(request: request, backgroundTask: backgroundTask)
     }
     
     public func PUT(request: PUTRequestable) -> Ride {
-        return execute(request, backgroundTask: nil)
+        return execute(request: request)
     }
     
     public func PATCH(request: PATCHRequestable) -> Ride {
-        return execute(request, backgroundTask: nil)
+        return execute(request: request)
     }
     
     public func DELETE(request: DELETERequestable) -> Ride {
-        return execute(request, backgroundTask: nil)
+        return execute(request: request)
     }
     
     public func HEAD(request: HEADRequestable) -> Ride {
-        return execute(request, backgroundTask: nil)
+        return execute(request: request)
     }
 }
 
 // MARK: - NSURLSessionDelegate
 
-extension Networking: NSURLSessionDelegate {
+extension Networking: URLSessionDelegate {
     
-    public func URLSession(session: NSURLSession, didReceiveChallenge challenge: NSURLAuthenticationChallenge, completionHandler: (NSURLSessionAuthChallengeDisposition, NSURLCredential?) -> Void) {
+    public func URLSession(session: URLSession, didReceiveChallenge challenge: URLAuthenticationChallenge, completionHandler: (Foundation.URLSession.AuthChallengeDisposition, Foundation.URLCredential?) -> Void) {
         guard let baseURLString = baseURLString,
-            baseURL = NSURL(string: baseURLString.URLString),
-            serverTrust = challenge.protectionSpace.serverTrust
+            let baseURL = NSURL(string: baseURLString.URLString),
+            let serverTrust = challenge.protectionSpace.serverTrust
             else { return }
         
         if challenge.protectionSpace.host == baseURL.host {
             completionHandler(
-                NSURLSessionAuthChallengeDisposition.UseCredential,
-                NSURLCredential(forTrust: serverTrust))
+                Foundation.URLSession.AuthChallengeDisposition.useCredential,
+                URLCredential(trust: serverTrust))
         }
     }
 }

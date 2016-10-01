@@ -1,48 +1,44 @@
 import Foundation
 
-public class Mock {
+open class Mock {
 
-  public var request: Requestable
-  public var response: NSHTTPURLResponse?
-  public var data: NSData?
-  public var error: ErrorType?
+  open var request: Requestable
+  open var response: HTTPURLResponse?
+  open var data: Data?
+  open var error: Error?
 
   // MARK: - Initialization
 
-  public init(request: Requestable, response: NSHTTPURLResponse?, data: NSData?, error: ErrorType? = nil) {
+  public init(request: Requestable, response: HTTPURLResponse?, data: Data?, error: Error? = nil) {
     self.request = request
     self.data = data
     self.response = response
     self.error = error
   }
 
-  public convenience init(request: Requestable, fileName: String, bundle: NSBundle = NSBundle.mainBundle()) {
-    guard let fileURL = NSURL(string: fileName),
-      resource = fileURL.URLByDeletingPathExtension?.absoluteString,
-      filePath = bundle.pathForResource(resource, ofType: fileURL.pathExtension),
-      data = NSData(contentsOfFile: filePath),
-      response = NSHTTPURLResponse(URL: fileURL, statusCode: 200, HTTPVersion: "HTTP/2.0", headerFields: nil)
-      else {
-        self.init(request: request, response: nil, data: nil, error: Error.NoResponseReceived)
-        return
-    }
+  public convenience init(request: Requestable, fileName: String, bundle: Bundle = Bundle.main) {
+    let fileURL = URL(string: fileName)
+    let resource = fileURL?.deletingPathExtension().absoluteString
+    let filePath = bundle.path(forResource: resource, ofType: fileURL?.pathExtension)
+    let data = try? Data(contentsOf: URL(fileURLWithPath: filePath!))
+    let response = HTTPURLResponse(url: fileURL!, statusCode: 200, httpVersion: "HTTP/2.0", headerFields: nil)
 
-    response.setValue("application/json; charset=utf-8", forKey: "MIMEType")
+    response?.setValue("application/json; charset=utf-8", forKey: "MIMEType")
 
     self.init(request: request, response: response, data: data, error: nil)
   }
 
   public convenience init(request: Requestable, JSON: [String: AnyObject]) {
-    var JSONData: NSData?
+    var JSONData: Data?
 
     do {
-      JSONData = try NSJSONSerialization.dataWithJSONObject(JSON, options: NSJSONWritingOptions())
+      JSONData = try JSONSerialization.data(withJSONObject: JSON, options: JSONSerialization.WritingOptions())
     } catch {}
 
-    guard let URL = NSURL(string: "mock://JSON"), data = JSONData,
-      response = NSHTTPURLResponse(URL: URL, statusCode: 200, HTTPVersion: "HTTP/2.0", headerFields: nil)
+    guard let URL = URL(string: "mock://JSON"), let data = JSONData,
+      let response = HTTPURLResponse(url: URL, statusCode: 200, httpVersion: "HTTP/2.0", headerFields: nil)
       else {
-        self.init(request: request, response: nil, data: nil, error: Error.NoResponseReceived)
+        self.init(request: request, response: nil, data: nil, error: MalibuError.noResponseReceived)
         return
     }
 

@@ -15,7 +15,7 @@ extension String: URLStringConvertible {
 
 // MARK: - NSURL
 
-extension NSURL: URLStringConvertible {
+extension URL: URLStringConvertible {
 
   public var URLString: String {
     return absoluteString

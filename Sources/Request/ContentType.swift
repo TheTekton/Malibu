@@ -1,25 +1,25 @@
 import Foundation
 
 public enum ContentType {
-    case Query
-    case FormURLEncoded
-    case JSON
-    case MultipartFormData
-    case Custom(String)
+    case query
+    case formURLEncoded
+    case json
+    case multipartFormData
+    case custom(String)
     
     public var header: String? {
         let string: String?
         
         switch self {
-        case .Query:
+        case .query:
             string = nil
-        case .JSON:
+        case .json:
             string = "application/json"
-        case .FormURLEncoded:
+        case .formURLEncoded:
             string = "application/x-www-form-urlencoded"
-        case .MultipartFormData:
+        case .multipartFormData:
             string = "multipart/form-data; boundary=\(boundary)"
-        case .Custom(let value):
+        case .custom(let value):
             string = value
         }
         
@@ -30,11 +30,11 @@ public enum ContentType {
         var encoder: ParameterEncoding?
         
         switch self {
-        case .JSON:
+        case .json:
             encoder = JSONEncoder()
-        case .FormURLEncoded:
+        case .formURLEncoded:
             encoder = FormURLEncoder()
-        case .MultipartFormData():
+        case .multipartFormData():
             encoder = MultipartFormEncoder()
         default:
             break

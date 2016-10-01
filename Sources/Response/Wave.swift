@@ -1,13 +1,13 @@
 import Foundation
 import When
 
-public class Wave: Equatable {
+open class Wave: Equatable {
 
-  public let data: NSData
-  public let request: NSURLRequest
-  public let response: NSHTTPURLResponse
+  open let data: Data
+  open let request: URLRequest
+  open let response: HTTPURLResponse
 
-  public init(data: NSData, request: NSURLRequest, response: NSHTTPURLResponse) {
+  public init(data: Data, request: URLRequest, response: HTTPURLResponse) {
     self.data = data
     self.request = request
     self.response = response

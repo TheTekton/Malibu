@@ -1,16 +1,16 @@
 import Foundation
 import When
 
-public class Ride: Promise<Wave> {
+open class Ride: Promise<Wave> {
 
-  public var task: NSURLSessionTask?
+  open var task: URLSessionTask?
 
-  public init(task: NSURLSessionTask? = nil) {
+  public init(task: URLSessionTask? = nil) {
     self.task = task
     super.init()
   }
 
-  public func cancel() {
+  open func cancel() {
     task?.cancel()
     task = nil
   }

@@ -3,13 +3,13 @@ import When
 
 class SessionDataTask: TaskRunning {
 
-  var session: NSURLSession
-  var URLRequest: NSURLRequest
+  var session: URLSession
+  var URLRequest: Foundation.URLRequest
   var ride: Ride
 
   // MARK: - Initialization
 
-  init(session: NSURLSession, URLRequest: NSURLRequest, ride: Ride) {
+  init(session: URLSession, URLRequest: Foundation.URLRequest, ride: Ride) {
     self.session = session
     self.URLRequest = URLRequest
     self.ride = ride
@@ -18,7 +18,7 @@ class SessionDataTask: TaskRunning {
   // MARK: - NetworkTaskRunning
 
   func run() {
-    let task = session.dataTaskWithRequest(URLRequest, completionHandler: process)
+    let task = session.dataTask(with: URLRequest, completionHandler: process)
     task.resume()
 
     ride.task = task

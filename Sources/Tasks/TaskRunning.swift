@@ -2,7 +2,7 @@ import Foundation
 import When
 
 public protocol TaskRunning: class {
-  var URLRequest: NSURLRequest { get }
+  var URLRequest: Foundation.URLRequest { get }
   var ride: Ride { get }
 
   func run()
@@ -10,19 +10,19 @@ public protocol TaskRunning: class {
 
 extension TaskRunning {
 
-  func process(data: NSData?, response: NSURLResponse?, error: ErrorType?) {
+  func process(_ data: Data?, response: URLResponse?, error: Error?) {
     if let error = error {
       ride.reject(error)
       return
     }
 
-    guard let response = response as? NSHTTPURLResponse else {
-      ride.reject(Error.NoResponseReceived)
+    guard let response = response as? HTTPURLResponse else {
+      ride.reject(MalibuError.noResponseReceived)
       return
     }
 
     guard let data = data else {
-      ride.reject(Error.NoDataInResponse)
+      ride.reject(MalibuError.noDataInResponse)
       return
     }
 

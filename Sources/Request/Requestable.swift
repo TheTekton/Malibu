@@ -5,9 +5,9 @@ public protocol Requestable {
     var message: Message { get set }
     var contentType: ContentType { get }
     var etagPolicy: ETagPolicy { get }
-    var cachePolicy: NSURLRequestCachePolicy { get }
+    var cachePolicy: NSURLRequest.CachePolicy { get }
     
-    func toURLRequest(baseURLString: URLStringConvertible?,
+    func toURLRequest(_ baseURLString: URLStringConvertible?,
                       additionalHeaders: [String: String]) throws -> NSMutableURLRequest
 }
 
@@ -15,25 +15,25 @@ public extension Requestable {
     
     // MARK: - Default implementations
     
-    var cachePolicy: NSURLRequestCachePolicy {
-        return .UseProtocolCachePolicy
+    var cachePolicy: NSURLRequest.CachePolicy {
+        return .useProtocolCachePolicy
     }
     
-    func toURLRequest(baseURLString: URLStringConvertible? = nil,
+    func toURLRequest(_ baseURLString: URLStringConvertible? = nil,
                       additionalHeaders: [String: String] = [:]) throws -> NSMutableURLRequest {
         let prefix = baseURLString?.URLString ?? ""
         let resourceString = "\(prefix)\(message.resource.URLString)"
         let URL = try buildURL(resourceString)
-        let request = NSMutableURLRequest(URL: URL)
+        let request = NSMutableURLRequest(url: URL)
         
-        request.HTTPMethod = method.rawValue
+        request.httpMethod = method.rawValue
         request.cachePolicy = cachePolicy
         
         if let contentTypeHeader = contentType.header {
             request.setValue(contentTypeHeader, forHTTPHeaderField: "Content-Type")
         }
         
-        var data: NSData?
+        var data: Data?
         
         if let encoder = parameterEncoders[contentType] {
             data = try encoder.encode(message.parameters)
@@ -41,10 +41,10 @@ public extension Requestable {
             data = try encoder.encode(message.parameters)
         }
         
-        request.HTTPBody = data
+        request.httpBody = data
         
-        if let body = data where contentType == .MultipartFormData {
-            request.setValue("\(body.length)", forHTTPHeaderField: "Content-Length")
+        if let body = data , contentType == .multipartFormData {
+            request.setValue("\(body.count)", forHTTPHeaderField: "Content-Length")
         }
         
         [additionalHeaders, message.headers].forEach {
@@ -53,7 +53,7 @@ public extension Requestable {
             }
         }
         
-        if etagPolicy == .Enabled {
+        if etagPolicy == .enabled {
             if let etag = ETagStorage().get(etagKey(prefix)) {
                 request.setValue(etag, forHTTPHeaderField: "If-None-Match")
             }
@@ -64,16 +64,16 @@ public extension Requestable {
     
     // MARK: - Helpers
     
-    func buildURL(string: String) throws -> NSURL {
-        guard let URL = NSURL(string: string) else {
-            throw Error.InvalidRequestURL
+    func buildURL(_ string: String) throws -> URL {
+        guard let URL = URL(string: string) else {
+            throw MalibuError.invalidRequestURL
         }
         
-        guard contentType == .Query && !message.parameters.isEmpty else {
+        guard contentType == .query && !message.parameters.isEmpty else {
             return URL
         }
         
-        guard let URLComponents = NSURLComponents(URL: URL, resolvingAgainstBaseURL: false) else {
+        guard var URLComponents = URLComponents(url: URL, resolvingAgainstBaseURL: false) else {
             return URL
         }
         
@@ -82,14 +82,14 @@ public extension Requestable {
         
         URLComponents.percentEncodedQuery = percentEncodedQuery
         
-        guard let queryURL = URLComponents.URL else {
-            throw Error.InvalidRequestURL
+        guard let queryURL = URLComponents.url else {
+            throw MalibuError.invalidRequestURL
         }
         
         return queryURL
     }
     
-    func etagKey(prefix: String = "") -> String {
+    func etagKey(_ prefix: String = "") -> String {
         return "\(method)\(prefix)\(message.resource.URLString)\(message.parameters.description)"
     }
     

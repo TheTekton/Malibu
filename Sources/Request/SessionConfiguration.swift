@@ -1,24 +1,24 @@
 import Foundation
 
 public enum SessionConfiguration {
-    case Default, Ephemeral, Background, Custom(NSURLSessionConfiguration)
+    case `default`, ephemeral, background, custom(URLSessionConfiguration)
     
-    var value: NSURLSessionConfiguration {
-        var value: NSURLSessionConfiguration
+    var value: URLSessionConfiguration {
+        var value: URLSessionConfiguration
         
         switch self {
-        case .Default:
-            value = NSURLSessionConfiguration.defaultSessionConfiguration()
-        case .Ephemeral:
-            value = NSURLSessionConfiguration.ephemeralSessionConfiguration()
-        case .Background:
-            value =  NSURLSessionConfiguration.backgroundSessionConfigurationWithIdentifier(
-                "MalibuBackgroundConfiguration")
-        case .Custom(let sessionConfiguration):
+        case .default:
+            value = URLSessionConfiguration.default
+        case .ephemeral:
+            value = URLSessionConfiguration.ephemeral
+        case .background:
+            value =  URLSessionConfiguration.background(
+                withIdentifier: "MalibuBackgroundConfiguration")
+        case .custom(let sessionConfiguration):
             value = sessionConfiguration
         }
         
-        value.HTTPAdditionalHeaders = Header.defaultHeaders
+        value.httpAdditionalHeaders = Header.defaultHeaders
         
         return value
     }
@@ -27,20 +27,20 @@ public enum SessionConfiguration {
 @objc
 class SessionConfigurationBridge: NSObject {
     
-    class func Default() -> NSURLSessionConfiguration {
-        return NSURLSessionConfiguration.defaultSessionConfiguration()
+    class func Default() -> URLSessionConfiguration {
+        return URLSessionConfiguration.default
     }
     
-    class func Ephemeral() -> NSURLSessionConfiguration {
-        return NSURLSessionConfiguration.ephemeralSessionConfiguration()
+    class func Ephemeral() -> URLSessionConfiguration {
+        return URLSessionConfiguration.ephemeral
     }
     
-    class func Background() -> NSURLSessionConfiguration {
-        return NSURLSessionConfiguration.backgroundSessionConfigurationWithIdentifier(
-            "MalibuBackgroundConfiguration")
+    class func Background() -> URLSessionConfiguration {
+        return URLSessionConfiguration.background(
+            withIdentifier: "MalibuBackgroundConfiguration")
     }
     
-    class func Custom(sessionConfiguration: NSURLSessionConfiguration) -> SessionConfiguration {
-        return SessionConfiguration.Custom(sessionConfiguration)
+    class func Custom(_ sessionConfiguration: URLSessionConfiguration) -> SessionConfiguration {
+        return SessionConfiguration.custom(sessionConfiguration)
     }
 }

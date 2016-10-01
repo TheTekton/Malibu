@@ -5,25 +5,25 @@ struct Header {
   static let acceptEncoding: String = "gzip;q=1.0, compress;q=0.5"
 
   static var acceptLanguage: String {
-    return NSLocale.preferredLanguages().prefix(6).enumerate().map { index, languageCode in
+    return Locale.preferredLanguages.prefix(6).enumerated().map { index, languageCode in
       let quality = 1.0 - (Double(index) * 0.1)
       return "\(languageCode);q=\(quality)"
-      }.joinWithSeparator(", ")
+      }.joined(separator: ", ")
   }
 
   static let userAgent: String = {
     var string = "Malibu"
 
-    if let info = NSBundle.mainBundle().infoDictionary {
-      let executable: AnyObject = info[kCFBundleExecutableKey as String] ?? "Unknown"
-      let bundle: AnyObject = info[kCFBundleIdentifierKey as String] ?? "Unknown"
-      let version: AnyObject = info[kCFBundleVersionKey as String] ?? "Unknown"
-      let os: AnyObject = NSProcessInfo.processInfo().operatingSystemVersionString ?? "Unknown"
+    if let info = Bundle.main.infoDictionary {
+      let executable: AnyObject = info[kCFBundleExecutableKey as String] as AnyObject? ?? "Unknown" as AnyObject
+      let bundle: AnyObject = info[kCFBundleIdentifierKey as String] as AnyObject? ?? "Unknown" as AnyObject
+      let version: AnyObject = info[kCFBundleVersionKey as String] as AnyObject? ?? "Unknown" as AnyObject
+      let os: AnyObject = ProcessInfo.processInfo.operatingSystemVersionString as AnyObject? ?? "Unknown" as AnyObject
       let mutableUserAgent = NSMutableString(
         string: "\(executable)/\(bundle) (\(version); OS \(os))") as CFMutableString
       let transform = NSString(string: "Any-Latin; Latin-ASCII; [:^ASCII:] Remove") as CFString
 
-      if CFStringTransform(mutableUserAgent, UnsafeMutablePointer<CFRange>(nil), transform, false) {
+      if CFStringTransform(mutableUserAgent, nil, transform, false) {
         string = mutableUserAgent as String
       }
     }
@@ -38,14 +38,14 @@ struct Header {
     ]
   }()
 
-  static func authentication(username username: String, password: String) -> String? {
+  static func authentication(username: String, password: String) -> String? {
     let credentials = "\(username):\(password)"
 
-    guard let credentialsData = credentials.dataUsingEncoding(NSUTF8StringEncoding) else {
+    guard let credentialsData = credentials.data(using: String.Encoding.utf8) else {
       return nil
     }
 
-    let base64Credentials = credentialsData.base64EncodedStringWithOptions([])
+    let base64Credentials = credentialsData.base64EncodedString(options: [])
 
     return "Basic \(base64Credentials)"
   }

@@ -1,5 +1,19 @@
 import Foundation
 
+extension String.Index{
+    func successor(in string:String)->String.Index{
+        return string.index(after: self)
+    }
+    
+    func predecessor(in string:String)->String.Index{
+        return string.index(before: self)
+    }
+    
+    func advance(_ offset:Int, `for` string:String)->String.Index{
+        return string.index(self, offsetBy: offset)
+    }
+}
+
 public struct QueryBuilder {
 
   public typealias Component = (String, String)
@@ -8,11 +22,11 @@ public struct QueryBuilder {
 
   public init() {}
 
-  public func buildQuery(parameters: [String: AnyObject]) -> String {
-    return buildComponents(parameters: parameters).map({ "\($0)=\($1)" }).joinWithSeparator("&")
+  public func buildQuery(_ parameters: [String: AnyObject]) -> String {
+    return buildComponents(parameters: parameters).map({ "\($0)=\($1)" }).joined(separator: "&")
   }
 
-  public func buildComponents(parameters parameters: [String: AnyObject]) -> [Component] {
+  public func buildComponents(parameters: [String: AnyObject]) -> [Component] {
     var components: [Component] = []
 
     parameters.forEach { key, value in
@@ -22,7 +36,7 @@ public struct QueryBuilder {
     return components
   }
 
-  public func buildComponents(key key: String, value: AnyObject) -> [Component] {
+  public func buildComponents(key: String, value: AnyObject) -> [Component] {
     var components: [Component] = []
 
     if let dictionary = value as? [String: AnyObject] {
@@ -40,24 +54,26 @@ public struct QueryBuilder {
     return components
   }
 
-  public func escape(string: String) -> String {
-    let allowedCharacters = NSCharacterSet.URLQueryAllowedCharacterSet().mutableCopy() as! NSMutableCharacterSet
-    allowedCharacters.removeCharactersInString(escapingCharacters)
+  public func escape(_ string: String) -> String {
+    let allowedCharacters = (CharacterSet.urlQueryAllowed as NSCharacterSet).mutableCopy() as! NSMutableCharacterSet
+    allowedCharacters.removeCharacters(in: escapingCharacters)
 
     var escapedString = ""
 
     if #available(iOS 8.3, *) {
-      escapedString = string.stringByAddingPercentEncodingWithAllowedCharacters(allowedCharacters) ?? string
+      escapedString = string.addingPercentEncoding(withAllowedCharacters: allowedCharacters as CharacterSet) ?? string
     } else {
       var index = string.startIndex
 
       while index != string.endIndex {
-        let endIndex = index.advancedBy(50, limit: string.endIndex)
+//        let endIndex = index.advancedBy(50, limit: string.endIndex)
+//        let endIndex = <#T##Collection corresponding to `index`##Collection#>.index(index, offsetBy: 50, limitedBy: string.endIndex)
+        let endIndex = index.successor(in: string)
         let range = Range(index..<endIndex)
-        let substring = string.substringWithRange(range)
+        let substring = string.substring(with: range)
 
         index = endIndex
-        escapedString += substring.stringByAddingPercentEncodingWithAllowedCharacters(allowedCharacters)
+        escapedString += substring.addingPercentEncoding(withAllowedCharacters: allowedCharacters as CharacterSet)
           ?? substring
       }
     }

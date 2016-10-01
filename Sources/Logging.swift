@@ -3,18 +3,18 @@ import Foundation
 // MARK: - Logger
 
 public enum LogLevel {
-  case None, Error, Info, Verbose
+  case none, error, info, verbose
 }
 
-public class Logger {
+open class Logger {
 
-  public var level: LogLevel = .None
-  public var errorLogger: ErrorLogging.Type = ErrorLogger.self
-  public var requestLogger: RequestLogging.Type = RequestLogger.self
-  public var responseLogger: ResponseLogging.Type = ResponseLogger.self
+  open var level: LogLevel = .none
+  open var errorLogger: ErrorLogging.Type = ErrorLogger.self
+  open var requestLogger: RequestLogging.Type = RequestLogger.self
+  open var responseLogger: ResponseLogging.Type = ResponseLogger.self
 
-  public var enabled: Bool {
-    return level != .None
+  open var enabled: Bool {
+    return level != .none
   }
 }
 
@@ -26,7 +26,7 @@ public protocol Logging {
 // MARK: - Errors
 
 public protocol ErrorLogging: Logging {
-  func logError(error: ErrorType)
+  func logError(_ error: Error)
 }
 
 public struct ErrorLogger: ErrorLogging {
@@ -37,8 +37,8 @@ public struct ErrorLogger: ErrorLogging {
     self.level = level
   }
 
-  public func logError(error: ErrorType) {
-    guard level != .None else {
+  public func logError(_ error: Error) {
+    guard level != .none else {
       return
     }
 
@@ -49,7 +49,7 @@ public struct ErrorLogger: ErrorLogging {
 // MARK: - Request
 
 public protocol RequestLogging: Logging {
-  func logRequest(request: Requestable, URLRequest: NSURLRequest)
+  func logRequest(_ request: Requestable, URLRequest: URLRequest)
 }
 
 public struct RequestLogger: RequestLogging {
@@ -60,28 +60,28 @@ public struct RequestLogger: RequestLogging {
     self.level = level
   }
 
-  public func logRequest(request: Requestable, URLRequest: NSURLRequest) {
-    guard let URLString = URLRequest.URL?.absoluteString else {
+  public func logRequest(_ request: Requestable, URLRequest: Foundation.URLRequest) {
+    guard let URLString = URLRequest.url?.absoluteString else {
       return
     }
 
-    guard level == .Info || level == .Verbose else {
+    guard level == .info || level == .verbose else {
       return
     }
 
     print("🏄 MALIBU: Catching the wave...")
     print("\(request.method.rawValue) \(URLString)")
 
-    guard level == .Verbose else {
+    guard level == .verbose else {
       return
     }
 
-    if let headers = URLRequest.allHTTPHeaderFields where !headers.isEmpty {
+    if let headers = URLRequest.allHTTPHeaderFields , !headers.isEmpty {
       print("Headers:")
       print(headers)
     }
 
-    if !request.message.parameters.isEmpty && request.contentType != .Query {
+    if !request.message.parameters.isEmpty && request.contentType != .query {
       print("Parameters:")
       print(request.message.parameters)
     }
@@ -91,7 +91,7 @@ public struct RequestLogger: RequestLogging {
 // MARK: - Response
 
 public protocol ResponseLogging: Logging {
-  func logResponse(response: NSHTTPURLResponse)
+  func logResponse(_ response: HTTPURLResponse)
 }
 
 public struct ResponseLogger: ResponseLogging {
@@ -102,8 +102,8 @@ public struct ResponseLogger: ResponseLogging {
     self.level = level
   }
 
-  public  func logResponse(response: NSHTTPURLResponse) {
-    guard level == .Info || level == .Verbose else {
+  public  func logResponse(_ response: HTTPURLResponse) {
+    guard level == .info || level == .verbose else {
       return
     }
 
