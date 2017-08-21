@@ -10,7 +10,7 @@ open class Ride: Promise<Wave> {
     super.init()
   }
 
-  open func cancel() {
+  open override func cancel() {
     task?.cancel()
     task = nil
   }
